@@ -1,0 +1,60 @@
+{
+  "name": "content-identity-auditor",
+  "version": "0.1.0",
+  "description": "Dependency-free content identity collision and publication-cadence auditing for Node.js.",
+  "type": "module",
+  "author": "Edilec Private Limited",
+  "license": "MIT",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "content-identity-auditor": "./bin/content-identity-auditor.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./src/index.mjs"
+    }
+  },
+  "types": "./index.d.ts",
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "index.d.ts",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "CONTRIBUTING.md",
+    "PROVENANCE.md",
+    "MAINTAINERS.md",
+    "CODE_OF_CONDUCT.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/index.mjs --test-coverage-lines=90 --test-coverage-functions=90 --test-coverage-branches=85",
+    "lint": "node --check src/index.mjs && node --check bin/content-identity-auditor.mjs && node --check test/content-identity.test.mjs && node --check test/cli.test.mjs",
+    "pack:check": "npm pack --dry-run",
+    "check": "npm run lint && npm run test:coverage && npm run pack:check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edilec/content-identity-auditor.git"
+  },
+  "homepage": "https://github.com/edilec/content-identity-auditor#readme",
+  "bugs": {
+    "url": "https://github.com/edilec/content-identity-auditor/issues"
+  },
+  "keywords": [
+    "content",
+    "editorial",
+    "seo",
+    "collision",
+    "audit",
+    "cli"
+  ]
+}

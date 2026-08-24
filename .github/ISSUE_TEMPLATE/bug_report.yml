@@ -1,0 +1,52 @@
+name: Bug report
+description: Report reproducible incorrect behavior in Content Identity Auditor.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include production catalogs, deployed baselines, credentials, private URLs, or customer data. Use a minimal synthetic reproduction. Report suspected vulnerabilities privately through SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 0.1.0 or full commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Node.js 24.14.0 on macOS 15
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal synthetic reproduction
+      description: Include the smallest safe catalog, baseline, and command or library call that reproduces the problem.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed production, private, personal, and customer data.
+          required: true
+        - label: This is not a vulnerability report.
+          required: true

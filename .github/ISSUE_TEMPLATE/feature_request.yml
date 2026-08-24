@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose a focused improvement with a real content-governance use case.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real workflow is difficult today, and who encounters it?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain the smallest useful change, including CLI or API behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Baseline and compatibility impact
+      description: Could this change normalization, schemas, findings, or existing baselines?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Project boundary
+      options:
+        - label: This proposal audits content identity or publication cadence; it does not claim search-ranking outcomes.
+          required: true

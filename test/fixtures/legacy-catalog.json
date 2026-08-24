@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "id": "LEGACY-A",
+      "slug": "shared-guide",
+      "title": "Shared: guide",
+      "status": "published",
+      "publishedAt": "2026-08-01",
+      "intent": "informational",
+      "primaryKeyword": "shared topic"
+    },
+    {
+      "id": "LEGACY-B",
+      "slug": "shared-guide",
+      "title": "Shared — guide!",
+      "status": "published",
+      "publishedAt": "2026-08-01",
+      "intent": "informational",
+      "primaryKeyword": "shared topic"
+    }
+  ]
+}

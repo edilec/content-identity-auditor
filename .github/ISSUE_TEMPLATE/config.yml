@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/edilec/content-identity-auditor/security/policy
+    about: Report suspected vulnerabilities privately by following SECURITY.md.
+  - name: General company enquiry
+    url: https://edilec.com/contact/
+    about: Contact Edilec about work unrelated to this open-source project.
