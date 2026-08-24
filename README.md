@@ -8,8 +8,8 @@ It normalizes routes, slugs, titles, and primary keywords; records existing
 debt in a deterministic baseline; blocks new debt; and lets teams ratchet away
 legacy problems without allowing them to return.
 
-> **Maturity:** `0.1.0` release candidate. The API and baseline schema may
-> change before `1.0.0`. This local repository has not been published to npm.
+> **Maturity:** experimental `0.1.0`. The API and baseline schema may change
+> before `1.0.0`. The package is not currently published to npm.
 
 ## Why it exists
 

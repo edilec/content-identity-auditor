@@ -17,8 +17,8 @@ All notable changes to this project will be documented here. The project uses
 
 ### Added
 
-- Initial local release candidate extracted and generalized from owned Edilec
-  website tooling. This version has not been published to npm.
+- Initial public release extracted and generalized from owned Edilec website
+  tooling. The package is not currently published to npm.
 
 [Unreleased]: https://github.com/edilec/content-identity-auditor/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/edilec/content-identity-auditor/releases/tag/v0.1.0
