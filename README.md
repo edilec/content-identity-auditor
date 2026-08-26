@@ -1,5 +1,9 @@
 # Content Identity Auditor
 
+[![CI](https://github.com/edilec/content-identity-auditor/actions/workflows/ci.yml/badge.svg)](https://github.com/edilec/content-identity-auditor/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/edilec/content-identity-auditor/actions/workflows/codeql.yml/badge.svg)](https://github.com/edilec/content-identity-auditor/actions/workflows/codeql.yml)
+[![MIT License](https://img.shields.io/badge/license-MIT-0f766e.svg)](./LICENSE)
+
 Content Identity Auditor is a dependency-free Node.js library and CLI that
 detects content identity collisions and publication-cadence regressions before
 they reach a site.

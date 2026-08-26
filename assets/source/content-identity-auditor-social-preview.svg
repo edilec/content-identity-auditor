@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="cia-title cia-description">
+  <title id="cia-title">Content Identity Auditor repository preview</title>
+  <desc id="cia-description">An Edilec open-source card showing content records passing through an identity collision gate.</desc>
+  <defs>
+    <linearGradient id="cia-background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#090D0C"/>
+      <stop offset="1" stop-color="#111915"/>
+    </linearGradient>
+    <linearGradient id="cia-emerald" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A7F3C4"/>
+      <stop offset="1" stop-color="#58C98A"/>
+    </linearGradient>
+    <pattern id="cia-grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#DDE8E1" stroke-opacity="0.05"/>
+    </pattern>
+    <filter id="cia-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#000000" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#cia-background)"/>
+  <rect width="1280" height="640" fill="url(#cia-grid)"/>
+  <rect width="12" height="640" fill="url(#cia-emerald)"/>
+
+  <g transform="translate(76 64)">
+    <g transform="scale(.44)" fill="#F4F7F5">
+      <path d="m76.729 74.083c-20.208 1.853-40.258 12.034-62.863 26.338-.521.329-.633.205-.244-.273 20.185-24.751 64.581-45.388 103.577-41.614.905.088 2.876.534.654 2.607-10.966 10.476-22.296 20.479-33.233 30.992-2.885 2.792-6.077 3.413-9.693 2.164-9.973-4.023-20.689-6.162-31.805-4.08-.606.113-.716-.108-.238-.498 9.196-7.514 21.794-12.155 33.846-15.636zM41.015 72.807C59.029 54.525 80.655 40.005 99.973 23.302c3.511-3.036 4.341-1.761 4.592 2.431.433 7.21.811 14.446 1.189 21.671.188 3.581-1.009 4.966-4.195 5.283-26.2 2.609-47.123 13.283-60.343 20.389-.543.292-.634.171-.201-.269z"/>
+    </g>
+    <text x="64" y="37" fill="#F4F7F5" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="25" font-weight="650" letter-spacing="7">EDILEC</text>
+    <text x="0" y="105" fill="#83DBA7" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" letter-spacing="3">OPEN SOURCE / CLI</text>
+  </g>
+
+  <g transform="translate(76 225)" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+    <text x="0" y="0" fill="#F4F7F5" font-size="64" font-weight="730" letter-spacing="-2">Content Identity</text>
+    <text x="0" y="72" fill="#F4F7F5" font-size="64" font-weight="730" letter-spacing="-2">Auditor</text>
+    <text x="1" y="132" fill="#AEB9B3" font-size="25" font-weight="450">Guard content identity before release.</text>
+  </g>
+
+  <g transform="translate(78 506)" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+    <circle cx="7" cy="-7" r="7" fill="#7BE2A5"/>
+    <text x="30" y="0" fill="#B8C3BD" font-size="17" font-weight="650" letter-spacing="2">NORMALIZE</text>
+    <circle cx="177" cy="-7" r="3" fill="#526059"/>
+    <text x="199" y="0" fill="#B8C3BD" font-size="17" font-weight="650" letter-spacing="2">COMPARE</text>
+    <circle cx="346" cy="-7" r="3" fill="#526059"/>
+    <text x="368" y="0" fill="#B8C3BD" font-size="17" font-weight="650" letter-spacing="2">RATCHET</text>
+  </g>
+
+  <g transform="translate(782 88)" filter="url(#cia-shadow)" font-family="Inter, ui-sans-serif, system-ui, sans-serif">
+    <rect width="416" height="464" rx="28" fill="#151C19" stroke="#6E8077" stroke-opacity="0.42"/>
+    <text x="34" y="50" fill="#8F9D96" font-size="14" font-weight="700" letter-spacing="2.2">IDENTITY GATE</text>
+    <path d="M34 76H382" stroke="#34423B"/>
+
+    <g transform="translate(34 104)">
+      <rect width="216" height="58" rx="14" fill="#0D1310" stroke="#3A4A42"/>
+      <circle cx="28" cy="29" r="7" fill="#7BE2A5"/>
+      <path d="M54 22H188M54 36H146" stroke="#718078" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(34 178)">
+      <rect width="216" height="58" rx="14" fill="#0D1310" stroke="#3A4A42"/>
+      <circle cx="28" cy="29" r="7" fill="#7BE2A5"/>
+      <path d="M54 22H174M54 36H132" stroke="#718078" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(34 252)">
+      <rect width="216" height="58" rx="14" fill="#0D1310" stroke="#3A4A42"/>
+      <circle cx="28" cy="29" r="7" fill="#F0B978"/>
+      <path d="M54 22H184M54 36H154" stroke="#718078" stroke-width="6" stroke-linecap="round"/>
+    </g>
+
+    <path d="M278 120v194" stroke="#435049" stroke-width="2" stroke-dasharray="5 9"/>
+    <path d="M259 215h38" stroke="#83DBA7" stroke-width="4" stroke-linecap="round"/>
+    <path d="M286 204l11 11-11 11" fill="none" stroke="#83DBA7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <rect x="310" y="132" width="72" height="170" rx="18" fill="#102019" stroke="#4F7E65"/>
+    <circle cx="346" cy="180" r="16" fill="#173E2B" stroke="#7BE2A5" stroke-width="2"/>
+    <path d="m338 180 6 6 11-13" fill="none" stroke="#A7F3C4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="346" y="230" fill="#A7F3C4" font-size="13" font-weight="700" text-anchor="middle" letter-spacing="1.4">PASS</text>
+    <text x="346" y="254" fill="#8C9C93" font-size="11" font-weight="650" text-anchor="middle">or block</text>
+
+    <rect x="34" y="356" width="348" height="72" rx="16" fill="#0D1210" stroke="#33423A"/>
+    <text x="56" y="385" fill="#7F9087" font-size="12" font-weight="700" letter-spacing="1.6">BASELINE</text>
+    <text x="56" y="411" fill="#D8E2DD" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">known debt cannot grow</text>
+  </g>
+</svg>
