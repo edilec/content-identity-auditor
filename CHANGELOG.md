@@ -12,6 +12,8 @@ All notable changes to this project will be documented here. The project uses
 - Daily, seven-day, and thirty-day publication-cadence limits.
 - Monotonic retirement of resolved collision pairs and publication debt.
 - Synthetic fixtures, tests, TypeScript declarations, and project governance.
+- An approval-gated release workflow for verified, checksummed GitHub release
+  artifacts built from immutable version tags.
 
 ## [0.1.0] - 2026-08-24
 
