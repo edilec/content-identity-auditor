@@ -37,3 +37,5 @@ Contributions are submitted under the repository's MIT License.
 
 Suspected vulnerabilities must follow [SECURITY.md](./SECURITY.md), not a
 public issue or pull request.
+
+Maintainers follow the reviewed-tag process in [Releasing](./docs/releasing.md).
