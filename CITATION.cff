@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata in this file."
+title: "Content Identity Auditor"
+type: software
+authors:
+  - name: "Edilec Private Limited"
+    website: "https://edilec.com/"
+abstract: "Dependency-free content identity collision and publication-cadence auditing for Node.js."
+version: "0.1.0"
+date-released: 2026-08-24
+license: MIT
+repository-code: "https://github.com/edilec/content-identity-auditor"
+url: "https://edilec.com/"
