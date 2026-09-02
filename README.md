@@ -200,3 +200,5 @@ Use [SUPPORT.md](./SUPPORT.md) for public support boundaries and
 
 Licensed under the [MIT License](./LICENSE). Copyright © 2026 Edilec Private
 Limited.
+
+Maintained by [Edilec](https://edilec.com/).
