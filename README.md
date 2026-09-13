@@ -37,7 +37,9 @@ This tool does not:
 - predict rankings, traffic, indexing, or content quality;
 - crawl a website or make network requests;
 - choose keywords, titles, publishing dates, or editorial strategy;
-- replace canonical, redirect, sitemap, or search-console validation; or
+- resolve, fetch, or validate canonical declarations against rendered pages,
+  redirects, or sitemaps (it compares the canonicals an inventory *declares*);
+  or
 - silently rewrite content or its baseline.
 
 ## Requirements
@@ -58,7 +60,9 @@ This tool does not:
       "status": "published",
       "publishedAt": "2026-08-20",
       "intent": "implementation",
-      "primaryKeyword": "reliable webhooks"
+      "primaryKeyword": "reliable webhooks",
+      "locale": "en",
+      "canonical": "https://edilec.com/guides/designing-reliable-webhooks"
     }
   ]
 }
@@ -69,8 +73,36 @@ Published items require `id`, canonical lowercase `slug`, `title`, a real
 New published items also require one of these intents: `commercial`,
 `comparison`, `implementation`, or `informational`.
 
+`locale` and `canonical` are optional.
+
 Drafts participate in collision analysis as warnings but do not become
 deployed baseline records.
+
+### Locale scope
+
+Identity dimensions split into two kinds:
+
+| Dimension | Scope | Why |
+| --- | --- | --- |
+| `route`, `slug`, `canonical` | global | Address space. Two items cannot occupy one address, whatever locale they declare. |
+| `title`, `primaryKeyword` | per locale | Editorial. A translated variant legitimately reuses a title or a target keyword. |
+
+So an English and a German article that share the title *Pricing* are not a
+collision, while two English articles that share it still are. An item with no
+`locale` sits in the default scope, so a catalog that declares no locales
+behaves exactly as it did before.
+
+### Canonical identity
+
+When items declare `canonical`, two items claiming the same canonical address
+are reported as `NEW_CANONICAL_COLLISION` — within one inventory, a canonical
+should identify one piece of content. Comparison normalizes the parts that are
+case-insensitive by definition (scheme and host) and drops the fragment, which
+never identifies a separate document; path case is preserved because it can be
+significant.
+
+A deliberate consolidation is accepted the same way any other known collision
+is: record it in the baseline and the ratchet holds the line from there.
 
 ## CLI quick start
 

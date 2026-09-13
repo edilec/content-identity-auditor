@@ -3,6 +3,29 @@
 All notable changes to this project will be documented here. The project uses
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- optional `locale` on catalog items. `title` and `primaryKeyword` collisions
+  are now compared within a locale, so translated variants that share a title
+  or a target keyword are no longer reported as duplicate identity. `route`,
+  `slug`, and `canonical` stay global, because two items cannot share one
+  address whatever locale they declare.
+- optional `canonical` on catalog items, indexed as a fifth identity dimension
+  with `NEW_CANONICAL_COLLISION`. Comparison lowercases scheme and host and
+  drops the fragment, and preserves path case.
+- `INVALID_LOCALE_TYPE`, `UNSAFE_LOCALE`, `INVALID_CANONICAL_TYPE`, and
+  `UNSAFE_CANONICAL` blockers for declared values that cannot be used.
+- exported `normalizeContentLocale`, `isValidContentLocale`, and
+  `normalizeContentCanonical`.
+
+### Changed
+
+- a baseline written before the `canonical` dimension existed loads unchanged;
+  its missing entries read as no accepted debt rather than as a malformed
+  baseline. The baseline schema is unchanged.
+
 ## [Unreleased]
 
 ### Added
