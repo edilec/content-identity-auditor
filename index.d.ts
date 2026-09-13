@@ -7,6 +7,10 @@ export interface ContentItem {
   intent?: 'commercial' | 'comparison' | 'implementation' | 'informational'
   primaryKeyword?: string
   keywords?: string[]
+  /** BCP 47-style tag. Scopes title and primaryKeyword collision comparison. */
+  locale?: string
+  /** Absolute http(s) URL or root-relative path. Indexed as an identity dimension. */
+  canonical?: string
 }
 
 export interface ContentCatalog {
@@ -82,3 +86,7 @@ export function advanceContentIdentityBaseline(catalog: ContentCatalog, baseline
 export function formatContentIdentityReport(report: ContentIdentityReport): string
 export function serializeContentIdentityReport(value: unknown): string
 export function assertContentIdentity(catalog: ContentCatalog, baseline: ContentIdentityBaseline, options?: ContentIdentityOptions): ContentIdentityReport
+
+export declare function normalizeContentLocale(value: unknown): string
+export declare function isValidContentLocale(value: unknown): boolean
+export declare function normalizeContentCanonical(value: unknown): string

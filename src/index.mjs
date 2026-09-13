@@ -7,7 +7,18 @@ export const VALID_INTENTS = Object.freeze(['commercial', 'comparison', 'impleme
 
 const STATUS_SET = new Set(VALID_STATUSES)
 const INTENT_SET = new Set(VALID_INTENTS)
-const DIMENSIONS = Object.freeze(['route', 'slug', 'title', 'primaryKeyword'])
+// URL-space dimensions are global: two items cannot occupy one address, whatever
+// locale they declare. Editorial dimensions are locale-scoped, because a
+// translated variant legitimately reuses a title or a target keyword.
+const DIMENSIONS = Object.freeze(['route', 'slug', 'canonical', 'title', 'primaryKeyword'])
+const LOCALE_SCOPED_DIMENSIONS = Object.freeze(['title', 'primaryKeyword'])
+
+// Dimensions introduced after the v1 baseline shipped. A baseline written
+// before they existed omits them; that is read as "no accepted debt here"
+// rather than as a malformed baseline.
+const OPTIONAL_BASELINE_DIMENSIONS = Object.freeze(['canonical'])
+
+const LOCALE_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/
 const WINDOWS = Object.freeze([
   { key: 'day', days: 1, limitKey: 'perDay', code: 'ADDED_PUBLICATION_DAY_BURST_DEBT' },
   { key: 'days7', days: 7, limitKey: 'per7Days', code: 'ADDED_PUBLICATION_7_DAY_BURST_DEBT' },
@@ -17,6 +28,7 @@ const DEFAULT_LIMITS = Object.freeze({ perDay: 2, per7Days: 5, per30Days: 15 })
 const COLLISION_CODES = Object.freeze({
   route: 'NEW_NORMALIZED_ROUTE_COLLISION',
   slug: 'NEW_NORMALIZED_SLUG_COLLISION',
+  canonical: 'NEW_CANONICAL_COLLISION',
   title: 'NEW_PUNCTUATION_INSENSITIVE_TITLE_COLLISION',
   primaryKeyword: 'WORSENED_PRIMARY_KEYWORD_CLUSTER',
 })
@@ -74,6 +86,59 @@ function primaryKeyword(item) {
 
 function emittedTitle(item, config) {
   return `${text(item?.title).trim()}${config.titleSuffix}`
+}
+
+/**
+ * Normalize a declared locale to a lowercase BCP 47-style tag.
+ *
+ * Returns '' when no locale is declared, which places the item in the default
+ * locale scope and leaves locale-free catalogs behaving exactly as before.
+ */
+export function normalizeContentLocale(value) {
+  return text(value).trim().toLowerCase()
+}
+
+export function isValidContentLocale(value) {
+  return LOCALE_PATTERN.test(normalizeContentLocale(value))
+}
+
+/**
+ * Normalize a declared canonical address for identity comparison.
+ *
+ * Scheme and host are case-insensitive, so they are lowercased; the path is
+ * left alone because path case can be significant. A fragment never identifies
+ * a separate document, so it is dropped. Returns '' when the value is not a
+ * usable absolute URL or root-relative path.
+ */
+export function normalizeContentCanonical(value) {
+  const raw = text(value).trim()
+  if (!raw) return ''
+  if (raw.startsWith('/')) return raw.split('#')[0]
+  let url
+  try {
+    url = new URL(raw)
+  } catch {
+    return ''
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+  return `${url.protocol}//${url.host}${url.pathname}${url.search}`
+}
+
+function localeScope(item) {
+  return normalizeContentLocale(item?.locale)
+}
+
+/** Prefix a group value with its locale scope, using NUL as the separator. */
+function scopedValue(locale, value) {
+  if (!value) return ''
+  return locale ? `${locale}\u0000${value}` : value
+}
+
+function splitScopedValue(value) {
+  const index = value.indexOf('\u0000')
+  return index === -1
+    ? { locale: '', bare: value }
+    : { locale: value.slice(0, index), bare: value.slice(index + 1) }
 }
 
 export function normalizeContentRoute(item, options = {}) {
@@ -149,8 +214,9 @@ function collisionGroups(items, config) {
   return {
     route: groupItems(items, (item) => normalizeContentRoute(item, config)),
     slug: groupItems(items, (item) => normalizeContentSlug(item.slug)),
-    title: groupItems(items, (item) => normalizeContentTitle(emittedTitle(item, config))),
-    primaryKeyword: groupItems(items, (item) => normalizeContentTopic(primaryKeyword(item))),
+    canonical: groupItems(items, (item) => normalizeContentCanonical(item.canonical)),
+    title: groupItems(items, (item) => scopedValue(localeScope(item), normalizeContentTitle(emittedTitle(item, config)))),
+    primaryKeyword: groupItems(items, (item) => scopedValue(localeScope(item), normalizeContentTopic(primaryKeyword(item)))),
   }
 }
 
@@ -197,6 +263,16 @@ function collectValidationBlockers(rawItems) {
     else if (title !== title.trim() || !normalizeContentTitle(title)) blockers.push({ code: 'UNSAFE_TITLE', id: id || null, value: title })
     if (typeof item.status !== 'string' || !STATUS_SET.has(status)) {
       blockers.push({ code: 'INVALID_STATUS', id: id || null, value: item.status ?? null, allowed: VALID_STATUSES })
+    }
+    // Locale and canonical are optional. When declared they must be usable,
+    // because both change how identity is compared.
+    if (item.locale !== undefined) {
+      if (typeof item.locale !== 'string') blockers.push({ code: 'INVALID_LOCALE_TYPE', id: id || null, valueType: typeof item.locale })
+      else if (!isValidContentLocale(item.locale)) blockers.push({ code: 'UNSAFE_LOCALE', id: id || null, value: item.locale })
+    }
+    if (item.canonical !== undefined) {
+      if (typeof item.canonical !== 'string') blockers.push({ code: 'INVALID_CANONICAL_TYPE', id: id || null, valueType: typeof item.canonical })
+      else if (!normalizeContentCanonical(item.canonical)) blockers.push({ code: 'UNSAFE_CANONICAL', id: id || null, value: item.canonical })
     }
     if (status === 'published') {
       const publishedAt = item.publishedAt
@@ -278,8 +354,11 @@ function canonicalGroupValue(value, dimension, config) {
     return new RegExp(`^${escapeRegExp(config.routePrefix)}\/[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*\/$`).test(value)
   }
   if (dimension === 'slug') return value === normalizeContentSlug(value) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
-  if (dimension === 'title') return value === normalizeContentTitle(value)
-  return value === normalizeContentTopic(value)
+  if (dimension === 'canonical') return Boolean(value) && value === normalizeContentCanonical(value)
+  const { locale, bare } = splitScopedValue(value)
+  if (locale && !LOCALE_PATTERN.test(locale)) return false
+  if (dimension === 'title') return bare === normalizeContentTitle(bare)
+  return bare === normalizeContentTopic(bare)
 }
 
 function validateBurstGroup(group, window, limits, maximum) {
@@ -336,9 +415,10 @@ function validateBaseline(baseline) {
     }
   }
   for (const dimension of DIMENSIONS) {
-    if (!Array.isArray(baseline.legacyCollisionGroups?.[dimension])) throw new Error(`Baseline is missing ${dimension} collision groups`)
-    if (!Array.isArray(baseline.retiredCollisionPairs?.[dimension])) throw new Error(`Baseline is missing ${dimension} retired pairs`)
-    const groups = baseline.legacyCollisionGroups[dimension]
+    const groups = baselineDimension(baseline, 'legacyCollisionGroups', dimension)
+    const retiredPairs = baselineDimension(baseline, 'retiredCollisionPairs', dimension)
+    if (!Array.isArray(groups)) throw new Error(`Baseline is missing ${dimension} collision groups`)
+    if (!Array.isArray(retiredPairs)) throw new Error(`Baseline is missing ${dimension} retired pairs`)
     const groupValues = groups.map((group) => group?.value)
     if (JSON.stringify(groupValues) !== JSON.stringify(sortedUnique(groupValues))) {
       throw new Error(`Baseline ${dimension} collision groups must be sorted and unique`)
@@ -350,11 +430,11 @@ function validateBaseline(baseline) {
       }
     })
     const ceilingPairs = new Set(groups.flatMap(pairsForGroup).map(pairKey))
-    const retiredKeys = baseline.retiredCollisionPairs[dimension].map(pairKey)
+    const retiredKeys = retiredPairs.map(pairKey)
     if (JSON.stringify(retiredKeys) !== JSON.stringify(sortedUnique(retiredKeys))) {
       throw new Error(`Baseline ${dimension} retired pairs must be sorted and unique`)
     }
-    for (const pair of baseline.retiredCollisionPairs[dimension]) {
+    for (const pair of retiredPairs) {
       if (
         !isRecord(pair)
         || !text(pair.value).trim()
@@ -431,13 +511,23 @@ export function createContentIdentityBaseline(catalog, options = {}) {
   }
 }
 
+/**
+ * Read one dimension out of a baseline map, tolerating a baseline written
+ * before that dimension existed.
+ */
+function baselineDimension(baseline, key, dimension) {
+  const value = baseline?.[key]?.[dimension]
+  if (value === undefined && OPTIONAL_BASELINE_DIMENSIONS.includes(dimension)) return []
+  return value
+}
+
 function baselineGroups(baseline, dimension) {
-  return new Map(baseline.legacyCollisionGroups[dimension].map((group) => [group.value, new Set(group.ids)]))
+  return new Map(baselineDimension(baseline, 'legacyCollisionGroups', dimension).map((group) => [group.value, new Set(group.ids)]))
 }
 
 function pushCollisionBlockers(blockers, groups, baseline, dimension) {
   const allowed = baselineGroups(baseline, dimension)
-  const retired = new Set(baseline.retiredCollisionPairs[dimension].map(pairKey))
+  const retired = new Set(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map(pairKey))
   for (const group of groups) {
     const allowedIds = allowed.get(group.value)
     const unexpectedIds = sortedUnique(group.ids.filter((id) => !allowedIds?.has(id)))
@@ -484,7 +574,7 @@ function collisionDebt(groups, baseline, dimension) {
   let groupsResolved = 0
   let items = 0
   let pairs = 0
-  for (const legacy of baseline.legacyCollisionGroups[dimension]) {
+  for (const legacy of baselineDimension(baseline, 'legacyCollisionGroups', dimension)) {
     const retained = new Set([...current.get(legacy.value) ?? []].filter((id) => legacy.ids.includes(id)))
     const legacyPairs = pairsForGroup(legacy).length
     const retainedPairs = retained.size > 1 ? (retained.size * (retained.size - 1)) / 2 : 0
@@ -620,8 +710,8 @@ export function advanceContentIdentityBaseline(catalog, baseline, options = {}) 
   const collisions = collisionGroups(published, baseline.config)
   const retiredCollisionPairs = Object.fromEntries(DIMENSIONS.map((dimension) => {
     const current = new Set(collisions[dimension].flatMap(pairsForGroup).map(pairKey))
-    const retired = new Map(baseline.retiredCollisionPairs[dimension].map((pair) => [pairKey(pair), pair]))
-    for (const pair of baseline.legacyCollisionGroups[dimension].flatMap(pairsForGroup)) {
+    const retired = new Map(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map((pair) => [pairKey(pair), pair]))
+    for (const pair of baselineDimension(baseline, 'legacyCollisionGroups', dimension).flatMap(pairsForGroup)) {
       if (!current.has(pairKey(pair))) retired.set(pairKey(pair), pair)
     }
     return [dimension, [...retired.values()].sort((left, right) => compareText(pairKey(left), pairKey(right)))]
