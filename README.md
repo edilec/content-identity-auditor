@@ -139,6 +139,23 @@ Output files are created with owner-only permissions (`0600`) on POSIX systems.
 Review and commit the resulting baseline as deployment evidence. Never advance
 from content that was not actually deployed.
 
+### The destination is checked before anything is written
+
+`--output` is checked before the first byte is written, and a destination that
+cannot be written to safely is a configuration error: exit `2`, nothing on
+stdout, and nothing on disk is touched.
+
+| Refused | Why |
+| --- | --- |
+| The destination is a symbolic link | The output would land wherever the link points, not on the path you named. A link aimed at a path that does not exist yet is refused for the same reason: following it creates a file outside the tree. |
+| Its parent resolves outside `--output-root` | A symlinked directory, or a `..` segment, on the way there does not widen the permitted tree. |
+| It is the same file as `--content` or `--baseline` | Compared by device and inode, so a hard link to an input is still an input. This tool never rewrites what it reads. |
+| It exists and is not a regular file | A directory is not an output file. |
+
+`--output-root` declares the tree the output may be written into and defaults
+to the working directory. Widen it deliberately when the baseline belongs
+somewhere else; it has no meaning without `--output`.
+
 Run `node ./bin/content-identity-auditor.mjs --help` for configuration options,
 including the route prefix, title suffix, and publication limits.
 

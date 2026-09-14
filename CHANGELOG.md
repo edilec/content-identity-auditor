@@ -7,6 +7,8 @@ All notable changes to this project will be documented here. The project uses
 
 ### Added
 
+- `--output-root`, the tree `--output` may be written into. It defaults to the
+  working directory and has no meaning without `--output`.
 - optional `locale` on catalog items. `title` and `primaryKeyword` collisions
   are now compared within a locale, so translated variants that share a title
   or a target keyword are no longer reported as duplicate identity. `route`,
@@ -21,6 +23,16 @@ All notable changes to this project will be documented here. The project uses
   `normalizeContentCanonical`.
 
 ### Fixed
+
+- `--output` could destroy a file the tool was never asked to write to, and the
+  run exited `0` saying nothing. Reproduced three ways before the fix:
+  `capture --content=catalog.json --output=catalog.json` replaced the catalog
+  with the baseline; `--output` through a symlinked directory replaced a file
+  outside the working tree; and a symbolic link at the destination was silently
+  replaced instead of being written through. Every destination is now checked
+  before the first byte is written -- symbolic link on sight, parent resolved
+  and compared against `--output-root`, and identity against every input by
+  device and inode -- and a refused destination exits `2` with empty stdout.
 
 - an unparseable catalog or baseline is no longer echoed on stderr. V8's parse
   error quotes the document (`Unexpected token 'A', "AKIA..." is not valid
