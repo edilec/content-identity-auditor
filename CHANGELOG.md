@@ -27,9 +27,18 @@ All notable changes to this project will be documented here. The project uses
   JSON`), so a file short enough to be only a credential was reproduced in full
   by its own diagnostic. `describeJsonParseFailure` keeps the position, line and
   column and drops the quoted content.
+- that first fix was incomplete: it matched the offset BEFORE recognising the
+  quoting shape, so a catalog whose own text reads `at position 1` produced
+  `Unexpected token 'a', "at position 1" is not valid JSON` and was sliced at
+  the offset found INSIDE the quoted span, handing the document straight back.
+  The quoting shape is now recognised first, and any detail still carrying a
+  double quote is replaced by the generic sentence.
 
 ### Changed
 
+- `describeJsonParseFailure` now reports `at the start of the document` or
+  `inside the document` rather than `in the document`, distinguishing a leading
+  snippet from a window V8 took further in.
 - a baseline written before the `canonical` dimension existed loads unchanged;
   its missing entries read as no accepted debt rather than as a malformed
   baseline. The baseline schema is unchanged.

@@ -343,10 +343,10 @@ test('describeJsonParseFailure keeps the position and drops the quoted document'
   const secret = 'AKIAIOSFODNN7EXAMPLE'
   const quoting = capture(secret)
   assert.ok(quoting.message.includes(secret), 'V8 no longer quotes the input; this guard needs revisiting')
-  assert.equal(describeJsonParseFailure(quoting), "unexpected token 'A' in the document")
+  assert.equal(describeJsonParseFailure(quoting), "unexpected token 'A' at the start of the document")
 
   const truncatedSnippet = capture('password=hunter2-correct-horse')
-  assert.equal(describeJsonParseFailure(truncatedSnippet), "unexpected token 'p' in the document")
+  assert.equal(describeJsonParseFailure(truncatedSnippet), "unexpected token 'p' at the start of the document")
 
   const positional = describeJsonParseFailure(capture('{"token": "AKIAIOSFODNN7EXAMPLE", '))
   assert.ok(!positional.includes('AKIAIOSF'), 'the quoted document survived a positional failure')
