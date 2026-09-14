@@ -4,6 +4,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import {
+  DestinationError,
+  assertWritableDestination,
+} from '../src/write-guard.mjs'
+import {
   advanceContentIdentityBaseline,
   analyzeContentIdentity,
   createContentIdentityBaseline,
@@ -23,6 +27,11 @@ Usage:
   content-identity-auditor audit --content=FILE --baseline=FILE [--today=YYYY-MM-DD] [--json|--human-only]
   content-identity-auditor advance --content=FILE --baseline=FILE [--output=FILE] [--ratchet-at=YYYY-MM-DD]
 
+Write options (capture and advance):
+  --output=FILE              Write the baseline here instead of stdout
+  --output-root=DIR          Tree the output may be written into (default: the
+                             working directory)
+
 Capture options:
   --captured-at=YYYY-MM-DD   Baseline capture date (defaults to today)
   --route-prefix=/content    Canonical route prefix
@@ -31,7 +40,10 @@ Capture options:
   --per-7-days=5             Maximum publications in a seven-day window
   --per-30-days=15           Maximum publications in a thirty-day window
 
-Output is written to stdout unless --output is supplied. Inputs are limited to 10 MiB.`
+Output is written to stdout unless --output is supplied. Inputs are limited to 10 MiB.
+
+A destination that is a symbolic link, that resolves outside --output-root, or
+that is the same file as an input is refused: exit 2, nothing on stdout.`
 
 function fail(message, exitCode = 2) {
   process.stderr.write(`${message}\n`)
@@ -92,13 +104,31 @@ function optionalValue(options, key) {
   return value
 }
 
-function writeOutput(value, outputPath) {
+/**
+ * Write the baseline, having first proved the destination is the file the
+ * caller named.
+ *
+ * `--out` is not a safe place to put a path the tool has not checked, and "the
+ * caller named it" is not a check: the caller named a path, not the file that
+ * path resolves to. A symbolic link there, a symlinked directory on the way
+ * there, or a hard link to one of the inputs each destroys a file this tool was
+ * never asked to touch -- measured here, exiting 0 and saying nothing.
+ *
+ * A refused destination is a configuration error, so stdout stays empty.
+ */
+async function writeOutput(value, outputPath, inputs, outputRoot) {
   const serialized = `${serializeContentIdentityReport(value)}\n`
   if (!outputPath) {
+    if (outputRoot !== undefined) throw new Error('--output-root has no meaning without --output')
     process.stdout.write(serialized)
     return
   }
-  const resolved = path.resolve(process.cwd(), outputPath)
+  const resolved = await assertWritableDestination(outputPath, {
+    inputs,
+    root: outputRoot ?? process.cwd(),
+    label: '--output',
+    rootLabel: '--output-root',
+  })
   const temporary = path.join(path.dirname(resolved), `.${path.basename(resolved)}.${process.pid}.tmp`)
   try {
     fs.writeFileSync(temporary, serialized, { encoding: 'utf8', mode: 0o600, flag: 'wx' })
@@ -112,9 +142,10 @@ function writeOutput(value, outputPath) {
   }
 }
 
-function runCapture(options) {
-  requireKnown(options, new Set(['content', 'output', 'captured-at', 'route-prefix', 'title-suffix', 'per-day', 'per-7-days', 'per-30-days']))
-  const catalog = readJson(requiredPath(options, 'content'), 'Content catalog')
+async function runCapture(options) {
+  requireKnown(options, new Set(['content', 'output', 'output-root', 'captured-at', 'route-prefix', 'title-suffix', 'per-day', 'per-7-days', 'per-30-days']))
+  const contentPath = requiredPath(options, 'content')
+  const catalog = readJson(contentPath, 'Content catalog')
   const baseline = createContentIdentityBaseline(catalog, {
     capturedAt: optionalValue(options, 'captured-at'),
     routePrefix: optionalValue(options, 'route-prefix'),
@@ -125,7 +156,7 @@ function runCapture(options) {
       per30Days: positiveInteger(options, 'per-30-days', 15),
     },
   })
-  writeOutput(baseline, optionalValue(options, 'output'))
+  await writeOutput(baseline, optionalValue(options, 'output'), [contentPath], optionalValue(options, 'output-root'))
 }
 
 function runAudit(options) {
@@ -144,14 +175,21 @@ function runAudit(options) {
   if (result.blockers.length) process.exitCode = 1
 }
 
-function runAdvance(options) {
-  requireKnown(options, new Set(['content', 'baseline', 'output', 'ratchet-at']))
-  const catalog = readJson(requiredPath(options, 'content'), 'Content catalog')
-  const baseline = readJson(requiredPath(options, 'baseline'), 'Baseline')
+async function runAdvance(options) {
+  requireKnown(options, new Set(['content', 'baseline', 'output', 'output-root', 'ratchet-at']))
+  const contentPath = requiredPath(options, 'content')
+  const baselinePath = requiredPath(options, 'baseline')
+  const catalog = readJson(contentPath, 'Content catalog')
+  const baseline = readJson(baselinePath, 'Baseline')
   const advanced = advanceContentIdentityBaseline(catalog, baseline, {
     ratchetUpdatedAt: optionalValue(options, 'ratchet-at'),
   })
-  writeOutput(advanced, optionalValue(options, 'output'))
+  await writeOutput(
+    advanced,
+    optionalValue(options, 'output'),
+    [contentPath, baselinePath],
+    optionalValue(options, 'output-root'),
+  )
 }
 
 if (command === '--help' || command === '-h' || command === undefined) {
@@ -161,12 +199,13 @@ if (command === '--help' || command === '-h' || command === undefined) {
 } else {
   try {
     const options = parseArgs(rawArgs)
-    if (command === 'capture') runCapture(options)
+    if (command === 'capture') await runCapture(options)
     else if (command === 'audit') runAudit(options)
-    else if (command === 'advance') runAdvance(options)
+    else if (command === 'advance') await runAdvance(options)
     else throw new Error(`Unknown command: ${command}`)
   } catch (error) {
-    fail(`Content identity audit failed: ${error instanceof Error ? error.message : String(error)}`)
+    if (error instanceof DestinationError) fail(error.message)
+    else fail(`Content identity audit failed: ${error instanceof Error ? error.message : String(error)}`)
     if (error instanceof Error && 'result' in error && error.result) {
       process.stderr.write(`${serializeContentIdentityReport(error.result)}\n`)
     }
