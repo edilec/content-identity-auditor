@@ -39,6 +39,9 @@ choosing which local files the process may read and where it may write.
 - CLI input files must be regular files no larger than 10 MiB at read time.
 - Malformed records, incompatible schemas, invalid configuration, and corrupt
   baselines must fail closed rather than silently weaken the gate.
+- Diagnostics must not echo catalog or baseline content. A JSON parse failure
+  is reported by position, line and column; V8's own message quotes the document
+  it choked on, so that quoted copy is stripped before the error is raised.
 - Output may be written only to stdout or an explicit `--output` path. New
   output files retain owner-only permissions (`0600`) on POSIX systems.
 - A failed audit must produce a non-zero exit code.

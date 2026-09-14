@@ -37,6 +37,28 @@ function text(value) {
   return String(value ?? '').normalize('NFKC')
 }
 
+/**
+ * Describe a JSON parse failure without repeating the document.
+ *
+ * V8 reports a parse failure two ways, and one of them quotes the input:
+ * `Unexpected token 'A', "AKIAIOSFODNN7EXAMPLE" is not valid JSON`. A catalog
+ * or baseline short enough to be only a credential is therefore reproduced in
+ * full by its own error message, and normalization does not help because the
+ * snippet sits at the front. The position, line and column are the useful half
+ * and are safe; the quoted half is the input and never leaves this function.
+ * V8 omits the position from the quoting form, so that case reports the
+ * offending token alone rather than inventing a location for it.
+ */
+export function describeJsonParseFailure(error) {
+  const message = String(error?.message ?? 'could not be parsed')
+  const position = /at position \d+(?: \(line \d+ column \d+\))?/.exec(message)
+  if (position) return message.slice(0, position.index + position[0].length)
+  const token = /^Unexpected token (.+?), ".*?"(?:\.\.\.)? is not valid JSON$/s.exec(message)
+  if (token) return `unexpected token ${token[1]} in the document`
+  if (/^Unexpected end of JSON input$/.test(message)) return message
+  return 'the document could not be parsed as JSON'
+}
+
 function compareText(left, right) {
   return left < right ? -1 : left > right ? 1 : 0
 }

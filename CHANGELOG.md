@@ -20,6 +20,14 @@ All notable changes to this project will be documented here. The project uses
 - exported `normalizeContentLocale`, `isValidContentLocale`, and
   `normalizeContentCanonical`.
 
+### Fixed
+
+- an unparseable catalog or baseline is no longer echoed on stderr. V8's parse
+  error quotes the document (`Unexpected token 'A', "AKIA..." is not valid
+  JSON`), so a file short enough to be only a credential was reproduced in full
+  by its own diagnostic. `describeJsonParseFailure` keeps the position, line and
+  column and drops the quoted content.
+
 ### Changed
 
 - a baseline written before the `canonical` dimension existed loads unchanged;

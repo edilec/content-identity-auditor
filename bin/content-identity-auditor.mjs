@@ -7,6 +7,7 @@ import {
   advanceContentIdentityBaseline,
   analyzeContentIdentity,
   createContentIdentityBaseline,
+  describeJsonParseFailure,
   formatContentIdentityReport,
   serializeContentIdentityReport,
 } from '../src/index.mjs'
@@ -71,7 +72,7 @@ function readJson(filePath, label) {
   try {
     return JSON.parse(source)
   } catch (error) {
-    throw new Error(`${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`${label} is not valid JSON: ${describeJsonParseFailure(error)}`)
   }
 }
 

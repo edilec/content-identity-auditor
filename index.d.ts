@@ -90,3 +90,9 @@ export function assertContentIdentity(catalog: ContentCatalog, baseline: Content
 export declare function normalizeContentLocale(value: unknown): string
 export declare function isValidContentLocale(value: unknown): boolean
 export declare function normalizeContentCanonical(value: unknown): string
+
+/**
+ * Describe a JSON parse failure without repeating the document that failed.
+ * Position, line and column survive; V8's quoted copy of the input does not.
+ */
+export declare function describeJsonParseFailure(error: unknown): string
