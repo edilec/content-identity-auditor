@@ -175,14 +175,23 @@ export function isValidContentLocale(value) {
  * Normalize a declared canonical address for identity comparison.
  *
  * Scheme and host are case-insensitive, so they are lowercased; the path is
- * left alone because path case can be significant. A fragment never identifies
+ * kept case-sensitive while URL dot segments are resolved. A fragment never identifies
  * a separate document, so it is dropped. Returns '' when the value is not a
  * usable absolute URL or root-relative path.
  */
 export function normalizeContentCanonical(value) {
   const raw = text(value).trim()
   if (!raw) return ''
-  if (raw.startsWith('/')) return raw.split('#')[0]
+  if (raw.startsWith('/')) {
+    try {
+      const base = 'https://canonical.invalid'
+      const url = new URL(raw, base)
+      return url.origin === base && !raw.startsWith('//')
+        ? `${url.pathname}${url.search}` : ''
+    } catch {
+      return ''
+    }
+  }
   let url
   try {
     url = new URL(raw)

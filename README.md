@@ -99,7 +99,8 @@ are reported as `NEW_CANONICAL_COLLISION` — within one inventory, a canonical
 should identify one piece of content. Comparison normalizes the parts that are
 case-insensitive by definition (scheme and host) and drops the fragment, which
 never identifies a separate document; path case is preserved because it can be
-significant.
+significant. Root-relative paths resolve dot segments as a browser would;
+protocol-relative addresses are not accepted as root-relative paths.
 
 A deliberate consolidation is accepted the same way any other known collision
 is: record it in the baseline and the ratchet holds the line from there.

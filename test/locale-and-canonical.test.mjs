@@ -48,6 +48,24 @@ test('canonical normalization lowercases scheme and host but keeps path case', (
   }
 })
 
+test('root-relative canonicals normalize browser dot segments before collision checks', () => {
+  assert.equal(normalizeContentCanonical('/a/../b?view=full#section'), '/b?view=full')
+  assert.equal(normalizeContentCanonical('/a/%2e%2e/b'), '/b')
+  const codes = codesFor([
+    item({ id: 'alpha', slug: 'alpha', title: 'Alpha', primaryKeyword: 'alpha', canonical: '/a/../b' }),
+    item({ id: 'beta', slug: 'beta', title: 'Beta', primaryKeyword: 'beta', canonical: '/b' }),
+  ])
+  assert.ok(codes.includes('NEW_CANONICAL_COLLISION'))
+})
+
+test('protocol-relative canonical is not mistaken for a root-relative path', () => {
+  assert.equal(normalizeContentCanonical('//edilec.com/b'), '')
+  const codes = codesFor([
+    item({ id: 'alpha', slug: 'alpha', title: 'Alpha', canonical: '//edilec.com/b' }),
+  ])
+  assert.ok(codes.includes('UNSAFE_CANONICAL'))
+})
+
 test('locale variants sharing a title and keyword are not a collision', () => {
   const codes = codesFor([
     item({ id: 'en-pricing', slug: 'pricing', title: 'Pricing', locale: 'en' }),
