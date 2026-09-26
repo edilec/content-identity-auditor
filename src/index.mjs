@@ -50,13 +50,30 @@ const PARSE_POSITION = /at position \d+(?: \(line \d+ column \d+\))?/
  * straight back out. The `s` flag matters too: the quoted span can contain a
  * newline.
  */
-const QUOTES_THE_INPUT = /^Unexpected token (.+?), (\.\.\.)?".*"(?:\.\.\.)? is not valid JSON$/s
+function quotedInputToken(message) {
+  const prefix = 'Unexpected token '
+  const suffix = ' is not valid JSON'
+  if (!message.startsWith(prefix) || !message.endsWith(suffix)) return null
+  const body = message.slice(prefix.length, -suffix.length)
+  const separator = body.indexOf(', ')
+  if (separator < 0) return null
+  const token = body.slice(0, separator)
+  if (!token.startsWith("'") || !token.endsWith("'")) return null
+  const character = token.slice(1, -1)
+  if ([...character].length !== 1 || /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]/u.test(character)) return null
+  let snippet = body.slice(separator + 2)
+  const inside = snippet.startsWith('...')
+  if (inside) snippet = snippet.slice(3)
+  if (snippet.endsWith('...')) snippet = snippet.slice(0, -3)
+  if (!snippet.startsWith('"') || !snippet.endsWith('"') || snippet.length < 2) return null
+  return { token, inside }
+}
 
 function describeParseFailure(message) {
-  const quoting = QUOTES_THE_INPUT.exec(message)
+  const quoting = quotedInputToken(message)
   if (quoting !== null) {
-    const where = quoting[2] === undefined ? 'at the start of the document' : 'inside the document'
-    return `unexpected token ${quoting[1]} ${where}`
+    const where = quoting.inside ? 'inside the document' : 'at the start of the document'
+    return `unexpected token ${quoting.token} ${where}`
   }
   const position = PARSE_POSITION.exec(message)
   if (position !== null) return message.slice(0, position.index + position[0].length)

@@ -117,3 +117,10 @@ test('a message in no recognised shape falls back to the generic sentence', () =
   assert.equal(describeJsonParseFailure(new Error('unrecognised shape')), 'the document could not be parsed as JSON')
   assert.equal(describeJsonParseFailure(undefined), 'the document could not be parsed as JSON')
 })
+
+test('a quoted-shape error never repeats an unbounded token field', () => {
+  const canary = 'AKIAIOSFODNN7EXAMPLE'
+  const message = `Unexpected token '${canary}', "${canary}" is not valid JSON`
+  assert.equal(describeJsonParseFailure(new SyntaxError(message)),
+    'the document could not be parsed as JSON')
+})
