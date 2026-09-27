@@ -5,6 +5,7 @@ import {
   advanceContentIdentityBaseline,
   analyzeContentIdentity,
   createContentIdentityBaseline,
+  formatContentIdentityReport,
   isValidContentLocale,
   normalizeContentCanonical,
   normalizeContentLocale,
@@ -184,6 +185,25 @@ test('two items claiming one canonical collide across locales', () => {
   assert.ok(collision, 'expected a canonical collision')
   assert.equal(collision.value, 'https://edilec.com/Hub')
   assert.deepEqual(collision.ids, ['alpha', 'beta'])
+})
+
+test('accepted canonical collision debt is visible in JSON and text summaries', () => {
+  const items = [
+    item({ id: 'alpha', slug: 'alpha', title: 'Alpha', primaryKeyword: 'alpha', canonical: '/shared' }),
+    item({ id: 'beta', slug: 'beta', title: 'Beta', primaryKeyword: 'beta', canonical: '/shared' }),
+  ]
+  const baseline = createContentIdentityBaseline({ items }, { capturedAt: TODAY })
+  const result = analyzeContentIdentity({ items }, baseline, { today: TODAY })
+
+  assert.deepEqual(result.blockers, [])
+  assert.deepEqual(result.currentLegacyDebt.canonical, { groups: 1, items: 2 })
+  assert.deepEqual(result.resolvedLegacyDebt.canonical, { groups: 0, items: 0, pairs: 0 })
+  assert.match(formatContentIdentityReport(result), /Collision debt:.*1 canonical/)
+
+  const olderReport = structuredClone(result)
+  delete olderReport.currentLegacyDebt.canonical
+  delete olderReport.resolvedLegacyDebt.canonical
+  assert.match(formatContentIdentityReport(olderReport), /Collision debt:.*0 canonical/)
 })
 
 test('distinct canonicals do not collide', () => {

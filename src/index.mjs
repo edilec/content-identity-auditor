@@ -766,6 +766,7 @@ export function analyzeContentIdentity(catalog, baseline, options = {}) {
     currentLegacyDebt: {
       route: { groups: collisions.route.length, items: new Set(collisions.route.flatMap((group) => group.ids)).size },
       slug: { groups: collisions.slug.length, items: new Set(collisions.slug.flatMap((group) => group.ids)).size },
+      canonical: { groups: collisions.canonical.length, items: new Set(collisions.canonical.flatMap((group) => group.ids)).size },
       title: { groups: collisions.title.length, items: new Set(collisions.title.flatMap((group) => group.ids)).size },
       primaryKeyword: { groups: collisions.primaryKeyword.length, items: new Set(collisions.primaryKeyword.flatMap((group) => group.ids)).size },
       publicationBursts: burstSummary(bursts),
@@ -773,6 +774,7 @@ export function analyzeContentIdentity(catalog, baseline, options = {}) {
     resolvedLegacyDebt: {
       route: collisionDebt(collisions.route, baseline, 'route'),
       slug: collisionDebt(collisions.slug, baseline, 'slug'),
+      canonical: collisionDebt(collisions.canonical, baseline, 'canonical'),
       title: collisionDebt(collisions.title, baseline, 'title'),
       primaryKeyword: collisionDebt(collisions.primaryKeyword, baseline, 'primaryKeyword'),
       publicationBursts: burstDebt(bursts, baseline),
@@ -831,9 +833,9 @@ export function formatContentIdentityReport(result) {
   const lines = [
     `Content identity gate: ${status}`,
     `Content: ${result.publishedItems} published, ${result.draftItems} draft, ${result.newPublishedItems} never deployed (ratchet ${result.ratchetUpdatedAt})`,
-    `Collision debt: ${debt.route.groups} route, ${debt.slug.groups} slug, ${debt.title.groups} title, ${debt.primaryKeyword.groups} primary-keyword groups`,
+    `Collision debt: ${debt.route.groups} route, ${debt.slug.groups} slug, ${debt.canonical?.groups ?? 0} canonical, ${debt.title.groups} title, ${debt.primaryKeyword.groups} primary-keyword groups`,
     `Publication debt: ${debt.publicationBursts.day.groups} daily, ${debt.publicationBursts.days7.groups} seven-day, ${debt.publicationBursts.days30.groups} thirty-day windows`,
-    `Resolved debt: ${resolved.route.items} route, ${resolved.slug.items} slug, ${resolved.title.items} title, ${resolved.primaryKeyword.items} primary-keyword memberships`,
+    `Resolved debt: ${resolved.route.items} route, ${resolved.slug.items} slug, ${resolved.canonical?.items ?? 0} canonical, ${resolved.title.items} title, ${resolved.primaryKeyword.items} primary-keyword memberships`,
     `Findings: ${result.blockers.length} blocker(s), ${result.warnings.length} warning(s)`,
   ]
   for (const finding of result.blockers.slice(0, 20)) {
