@@ -350,7 +350,7 @@ function collectValidationBlockers(rawItems) {
     }
     if (item.canonical !== undefined) {
       if (typeof item.canonical !== 'string') blockers.push({ code: 'INVALID_CANONICAL_TYPE', id: id || null, valueType: typeof item.canonical })
-      else if (!normalizeContentCanonical(item.canonical)) blockers.push({ code: 'UNSAFE_CANONICAL', id: id || null, value: item.canonical })
+      else if (!normalizeContentCanonical(item.canonical)) blockers.push({ code: 'UNSAFE_CANONICAL', id: id || null })
     }
     if (status === 'published') {
       const publishedAt = item.publishedAt

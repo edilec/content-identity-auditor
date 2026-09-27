@@ -151,6 +151,19 @@ test('a declared locale or canonical that cannot be used is a blocker', () => {
   assert.ok(typeCodes.includes('INVALID_CANONICAL_TYPE'))
 })
 
+test('an unsafe canonical is identified without echoing URL credentials', () => {
+  const baseline = createContentIdentityBaseline({ items: [] }, { capturedAt: TODAY })
+  const result = analyzeContentIdentity({ items: [
+    item({ id: 'alpha', slug: 'alpha', title: 'Alpha', canonical: 'https://user:synthetic-secret@' }),
+  ] }, baseline, { today: TODAY })
+  const finding = result.blockers.find((entry) => entry.code === 'UNSAFE_CANONICAL')
+
+  assert.ok(finding, 'the invalid canonical must still be a blocker')
+  assert.equal(finding.id, 'alpha')
+  assert.equal(Object.hasOwn(finding, 'value'), false)
+  assert.equal(serializeContentIdentityReport(result).includes('synthetic-secret'), false)
+})
+
 test('a baseline written before the canonical dimension existed still loads', () => {
   const baseline = createContentIdentityBaseline({ items: [] }, { today: TODAY })
   delete baseline.legacyCollisionGroups.canonical
