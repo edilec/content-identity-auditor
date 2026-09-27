@@ -294,11 +294,20 @@ function groupItems(items, valueFor) {
     .sort((left, right) => compareText(left.value, right.value))
 }
 
+// A canonical's query or path can contain private text. Match the complete
+// address in memory, but persist only an ordinal tied to the colliding IDs.
+function canonicalCollisionGroups(items) {
+  return groupItems(items, (item) => normalizeContentCanonical(item.canonical))
+    .sort((left, right) => compareText(left.ids.join('\u0000'), right.ids.join('\u0000')))
+    .map((group, index) => ({ value: `canonical#${index + 1}`, ids: group.ids }))
+    .sort((left, right) => compareText(left.value, right.value))
+}
+
 function collisionGroups(items, config) {
   return {
     route: groupItems(items, (item) => normalizeContentRoute(item, config)),
     slug: groupItems(items, (item) => normalizeContentSlug(item.slug)),
-    canonical: groupItems(items, (item) => normalizeContentCanonical(item.canonical)),
+    canonical: canonicalCollisionGroups(items),
     title: groupItems(items, (item) => scopedValue(localeScope(item), normalizeContentTitle(emittedTitle(item, config)))),
     primaryKeyword: groupItems(items, (item) => scopedValue(localeScope(item), normalizeContentTopic(primaryKeyword(item)))),
   }
@@ -317,6 +326,10 @@ function pairsForGroup(group) {
 
 function pairKey(pair) {
   return `${pair.value}\u0000${pair.ids[0]}\u0000${pair.ids[1]}`
+}
+
+function pairIdsKey(pair) {
+  return `${pair.ids[0]}\u0000${pair.ids[1]}`
 }
 
 function sortFindings(findings) {
@@ -438,7 +451,10 @@ function canonicalGroupValue(value, dimension, config) {
     return new RegExp(`^${escapeRegExp(config.routePrefix)}\/[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*\/$`).test(value)
   }
   if (dimension === 'slug') return value === normalizeContentSlug(value) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
-  if (dimension === 'canonical') return Boolean(value) && value === normalizeContentCanonical(value)
+  if (dimension === 'canonical') {
+    return /^canonical#[1-9]\d*$/.test(value)
+      || (Boolean(value) && value === normalizeContentCanonical(value))
+  }
   const { locale, bare } = splitScopedValue(value)
   if (locale && !LOCALE_PATTERN.test(locale)) return false
   if (dimension === 'title') return bare === normalizeContentTitle(bare)
@@ -610,6 +626,29 @@ function baselineGroups(baseline, dimension) {
 }
 
 function pushCollisionBlockers(blockers, groups, baseline, dimension) {
+  if (dimension === 'canonical') {
+    const legacyGroups = baselineDimension(baseline, 'legacyCollisionGroups', dimension)
+    const allowed = new Set(legacyGroups.flatMap(pairsForGroup).map(pairIdsKey))
+    const retired = new Set(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map(pairIdsKey))
+    const knownIds = new Set(legacyGroups.flatMap((group) => group.ids))
+    for (const group of groups) {
+      const pairs = pairsForGroup(group)
+      const newPairs = pairs.filter((pair) => !allowed.has(pairIdsKey(pair))).map((pair) => pair.ids)
+      const reintroducedPairs = pairs.filter((pair) => retired.has(pairIdsKey(pair))).map((pair) => pair.ids)
+      if (!newPairs.length && !reintroducedPairs.length) continue
+      blockers.push({
+        code: COLLISION_CODES[dimension],
+        dimension,
+        value: group.value,
+        ids: group.ids,
+        baselineItemCount: group.ids.filter((id) => knownIds.has(id)).length,
+        unexpectedIds: group.ids.filter((id) => !knownIds.has(id)),
+        newPairs,
+        reintroducedPairs,
+      })
+    }
+    return
+  }
   const allowed = baselineGroups(baseline, dimension)
   const retired = new Set(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map(pairKey))
   for (const group of groups) {
@@ -657,6 +696,20 @@ function pushPublicationBlockers(blockers, bursts, baseline) {
 }
 
 function collisionDebt(groups, baseline, dimension) {
+  if (dimension === 'canonical') {
+    const currentPairs = new Set(groups.flatMap(pairsForGroup).map(pairIdsKey))
+    let groupsResolved = 0
+    let items = 0
+    let pairs = 0
+    for (const legacy of baselineDimension(baseline, 'legacyCollisionGroups', dimension)) {
+      const retained = pairsForGroup(legacy).filter((pair) => currentPairs.has(pairIdsKey(pair)))
+      const reduction = pairsForGroup(legacy).length - retained.length
+      if (reduction) groupsResolved += 1
+      items += legacy.ids.length - new Set(retained.flatMap((pair) => pair.ids)).size
+      pairs += reduction
+    }
+    return { groups: groupsResolved, items, pairs }
+  }
   let groupsResolved = 0
   let items = 0
   let pairs = 0
@@ -804,16 +857,26 @@ export function advanceContentIdentityBaseline(catalog, baseline, options = {}) 
   const retiredCollisionPairs = Object.fromEntries(DIMENSIONS.map((dimension) => {
     const current = new Set()
     for (const pair of collisions[dimension].flatMap(pairsForGroup)) {
-      current.add(pairKey(pair))
+      current.add(dimension === 'canonical' ? pairIdsKey(pair) : pairKey(pair))
       const bare = legacyUnscopedValue(pair.value, dimension)
       if (bare !== null) current.add(pairKey({ ...pair, value: bare }))
     }
-    const retired = new Map(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map((pair) => [pairKey(pair), pair]))
+    const keyFor = dimension === 'canonical' ? pairIdsKey : pairKey
+    const retired = new Map(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map((pair) => [keyFor(pair), pair]))
     for (const pair of baselineDimension(baseline, 'legacyCollisionGroups', dimension).flatMap(pairsForGroup)) {
-      if (!current.has(pairKey(pair))) retired.set(pairKey(pair), pair)
+      if (!current.has(keyFor(pair))) retired.set(keyFor(pair), pair)
     }
     return [dimension, [...retired.values()].sort((left, right) => compareText(pairKey(left), pairKey(right)))]
   }))
+  const canonicalGroups = baselineDimension(baseline, 'legacyCollisionGroups', 'canonical')
+    .toSorted((left, right) => compareText(left.ids.join('\u0000'), right.ids.join('\u0000')))
+    .map((group, index) => ({ value: `canonical#${index + 1}`, ids: group.ids }))
+    .sort((left, right) => compareText(left.value, right.value))
+  const canonicalLabels = new Map(canonicalGroups.flatMap((group) =>
+    pairsForGroup(group).map((pair) => [pairIdsKey(pair), group.value])))
+  retiredCollisionPairs.canonical = retiredCollisionPairs.canonical
+    .map((pair) => ({ value: canonicalLabels.get(pairIdsKey(pair)), ids: pair.ids }))
+    .sort((left, right) => compareText(pairKey(left), pairKey(right)))
   const publicationDates = new Map(Object.entries(baseline.publishedAtById))
   for (const item of published) publicationDates.set(text(item.id).trim(), text(item.publishedAt).trim())
   return {
@@ -821,6 +884,7 @@ export function advanceContentIdentityBaseline(catalog, baseline, options = {}) 
     ratchetUpdatedAt,
     lastDeployedItemCount: published.length,
     publishedAtById: Object.fromEntries([...publicationDates.entries()].sort(([left], [right]) => compareText(left, right))),
+    legacyCollisionGroups: { ...baseline.legacyCollisionGroups, canonical: canonicalGroups },
     retiredCollisionPairs,
     lastDeployedPublicationBursts: publicationBurstGroups(published, baseline.config.publicationLimits),
   }

@@ -183,7 +183,7 @@ test('two items claiming one canonical collide across locales', () => {
   const collision = result.blockers.find((entry) => entry.code === 'NEW_CANONICAL_COLLISION')
 
   assert.ok(collision, 'expected a canonical collision')
-  assert.equal(collision.value, 'https://edilec.com/Hub')
+  assert.equal(collision.value, 'canonical#1')
   assert.deepEqual(collision.ids, ['alpha', 'beta'])
 })
 
@@ -204,6 +204,58 @@ test('accepted canonical collision debt is visible in JSON and text summaries', 
   delete olderReport.currentLegacyDebt.canonical
   delete olderReport.resolvedLegacyDebt.canonical
   assert.match(formatContentIdentityReport(olderReport), /Collision debt:.*0 canonical/)
+})
+
+test('canonical query values are compared but never stored or reported', () => {
+  const secret = 'synthetic-secret'
+  const canonical = `https://example.test/shared?token=${secret}`
+  const items = [
+    item({ id: 'alpha', slug: 'alpha', title: 'Alpha', primaryKeyword: 'alpha', canonical }),
+    item({ id: 'beta', slug: 'beta', title: 'Beta', primaryKeyword: 'beta', canonical }),
+  ]
+  const empty = createContentIdentityBaseline({ items: [] }, { capturedAt: TODAY })
+  const captured = createContentIdentityBaseline({ items }, { capturedAt: TODAY })
+  const report = analyzeContentIdentity({ items }, empty, { today: TODAY })
+  const finding = report.blockers.find((entry) => entry.code === 'NEW_CANONICAL_COLLISION')
+
+  assert.ok(finding, 'the exact canonical collision must still be detected')
+  assert.deepEqual(finding.ids, ['alpha', 'beta'])
+  for (const rendered of [
+    serializeContentIdentityReport(report),
+    formatContentIdentityReport(report),
+    serializeContentIdentityReport(captured),
+  ]) {
+    assert.equal(rendered.includes(secret), false)
+    assert.equal(rendered.includes(canonical), false)
+  }
+  const distinct = [items[0], { ...items[1], canonical: 'https://example.test/shared?token=different' }]
+  assert.equal(analyzeContentIdentity({ items: distinct }, empty, { today: TODAY })
+    .blockers.some((entry) => entry.code === 'NEW_CANONICAL_COLLISION'), false)
+})
+
+test('canonical debt tracks item pairs without pinning a sensitive URL', () => {
+  const oldCanonical = 'https://example.test/old?token=synthetic-secret'
+  const newCanonical = 'https://example.test/new?token=synthetic-other'
+  const alpha = item({ id: 'alpha', slug: 'alpha', title: 'Alpha', primaryKeyword: 'alpha', canonical: oldCanonical })
+  const beta = item({ id: 'beta', slug: 'beta', title: 'Beta', primaryKeyword: 'beta', canonical: oldCanonical })
+  const baseline = createContentIdentityBaseline({ items: [alpha, beta] }, { capturedAt: TODAY })
+  const moved = [{ ...alpha, canonical: newCanonical }, { ...beta, canonical: newCanonical }]
+
+  assert.deepEqual(analyzeContentIdentity({ items: moved }, baseline, { today: TODAY }).blockers, [])
+  const advanced = advanceContentIdentityBaseline({ items: [alpha] }, baseline, { ratchetUpdatedAt: TODAY })
+  const reintroduced = analyzeContentIdentity({ items: moved }, advanced, { today: TODAY })
+  const finding = reintroduced.blockers.find((entry) => entry.code === 'NEW_CANONICAL_COLLISION')
+  assert.ok(finding)
+  assert.deepEqual(finding.reintroducedPairs, [['alpha', 'beta']])
+
+  const legacy = structuredClone(baseline)
+  legacy.legacyCollisionGroups.canonical[0].value = oldCanonical
+  const migrated = advanceContentIdentityBaseline({ items: [alpha, beta] }, legacy, { ratchetUpdatedAt: TODAY })
+  assert.equal(serializeContentIdentityReport(migrated).includes('synthetic-secret'), false)
+  const advancedAgain = advanceContentIdentityBaseline({ items: [alpha] }, advanced, { ratchetUpdatedAt: TODAY })
+  assert.ok(analyzeContentIdentity({ items: moved }, advancedAgain, { today: TODAY })
+    .blockers.some((entry) => entry.code === 'NEW_CANONICAL_COLLISION'))
+  assert.equal(serializeContentIdentityReport(advancedAgain).includes('synthetic-secret'), false)
 })
 
 test('distinct canonicals do not collide', () => {

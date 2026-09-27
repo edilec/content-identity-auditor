@@ -109,6 +109,13 @@ protocol-relative addresses are not accepted as root-relative paths.
 
 A deliberate consolidation is accepted the same way any other known collision
 is: record it in the baseline and the ratchet holds the line from there.
+Canonical addresses are compared exactly in memory after normalization, but
+reports and newly captured baselines use opaque `canonical#N` labels instead
+of printing the address. The canonical ratchet tracks the affected item-ID
+pairs, so a known pair stays accepted even if its shared address changes;
+new or reintroduced pairs still block. Advancing an older baseline replaces
+its stored canonical addresses with these labels. Keep older baseline files
+private if they contain sensitive query values.
 
 ## CLI quick start
 
