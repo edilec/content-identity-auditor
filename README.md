@@ -37,7 +37,9 @@ This tool does not:
 - predict rankings, traffic, indexing, or content quality;
 - crawl a website or make network requests;
 - choose keywords, titles, publishing dates, or editorial strategy;
-- replace canonical, redirect, sitemap, or search-console validation; or
+- resolve, fetch, or validate canonical declarations against rendered pages,
+  redirects, or sitemaps (it compares the canonicals an inventory *declares*);
+  or
 - silently rewrite content or its baseline.
 
 ## Requirements
@@ -58,7 +60,9 @@ This tool does not:
       "status": "published",
       "publishedAt": "2026-08-20",
       "intent": "implementation",
-      "primaryKeyword": "reliable webhooks"
+      "primaryKeyword": "reliable webhooks",
+      "locale": "en",
+      "canonical": "https://edilec.com/guides/designing-reliable-webhooks"
     }
   ]
 }
@@ -69,8 +73,49 @@ Published items require `id`, canonical lowercase `slug`, `title`, a real
 New published items also require one of these intents: `commercial`,
 `comparison`, `implementation`, or `informational`.
 
+`locale` and `canonical` are optional.
+
 Drafts participate in collision analysis as warnings but do not become
 deployed baseline records.
+
+### Locale scope
+
+Identity dimensions split into two kinds:
+
+| Dimension | Scope | Why |
+| --- | --- | --- |
+| `route`, `slug`, `canonical` | global | Address space. Two items cannot occupy one address, whatever locale they declare. |
+| `title`, `primaryKeyword` | per locale | Editorial. A translated variant legitimately reuses a title or a target keyword. |
+
+So an English and a German article that share the title *Pricing* are not a
+collision, while two English articles that share it still are. An item with no
+`locale` sits in the default scope, so a catalog that declares no locales
+behaves exactly as it did before.
+
+Existing baselines that recorded title or keyword collision debt before locale
+scoping remain usable. The same recorded ID pairs remain accepted within a
+locale; a new member or a retired pair coming back is still blocked. Newly
+captured baselines record locale-scoped values directly.
+
+### Canonical identity
+
+When items declare `canonical`, two items claiming the same canonical address
+are reported as `NEW_CANONICAL_COLLISION` — within one inventory, a canonical
+should identify one piece of content. Comparison normalizes the parts that are
+case-insensitive by definition (scheme and host) and drops the fragment, which
+never identifies a separate document; path case is preserved because it can be
+significant. Root-relative paths resolve dot segments as a browser would;
+protocol-relative addresses are not accepted as root-relative paths.
+
+A deliberate consolidation is accepted the same way any other known collision
+is: record it in the baseline and the ratchet holds the line from there.
+Canonical addresses are compared exactly in memory after normalization, but
+reports and newly captured baselines use opaque `canonical#N` labels instead
+of printing the address. The canonical ratchet tracks the affected item-ID
+pairs, so a known pair stays accepted even if its shared address changes;
+new or reintroduced pairs still block. Advancing an older baseline replaces
+its stored canonical addresses with these labels. Keep older baseline files
+private if they contain sensitive query values.
 
 ## CLI quick start
 
@@ -106,6 +151,23 @@ node ./bin/content-identity-auditor.mjs advance \
 Output files are created with owner-only permissions (`0600`) on POSIX systems.
 Review and commit the resulting baseline as deployment evidence. Never advance
 from content that was not actually deployed.
+
+### The destination is checked before anything is written
+
+`--output` is checked before the first byte is written, and a destination that
+cannot be written to safely is a configuration error: exit `2`, nothing on
+stdout, and nothing on disk is touched.
+
+| Refused | Why |
+| --- | --- |
+| The destination is a symbolic link | The output would land wherever the link points, not on the path you named. A link aimed at a path that does not exist yet is refused for the same reason: following it creates a file outside the tree. |
+| Its parent resolves outside `--output-root` | A symlinked directory, or a `..` segment, on the way there does not widen the permitted tree. |
+| It is the same file as `--content` or `--baseline` | Compared by device and inode, so a hard link to an input is still an input. This tool never rewrites what it reads. |
+| It exists and is not a regular file | A directory is not an output file. |
+
+`--output-root` declares the tree the output may be written into and defaults
+to the working directory. Widen it deliberately when the baseline belongs
+somewhere else; it has no meaning without `--output`.
 
 Run `node ./bin/content-identity-auditor.mjs --help` for configuration options,
 including the route prefix, title suffix, and publication limits.

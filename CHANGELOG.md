@@ -3,6 +3,58 @@
 All notable changes to this project will be documented here. The project uses
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `--output-root`, the tree `--output` may be written into. It defaults to the
+  working directory and has no meaning without `--output`.
+- optional `locale` on catalog items. `title` and `primaryKeyword` collisions
+  are now compared within a locale, so translated variants that share a title
+  or a target keyword are no longer reported as duplicate identity. `route`,
+  `slug`, and `canonical` stay global, because two items cannot share one
+  address whatever locale they declare.
+- optional `canonical` on catalog items, indexed as a fifth identity dimension
+  with `NEW_CANONICAL_COLLISION`. Comparison lowercases scheme and host and
+  drops the fragment, and preserves path case.
+- `INVALID_LOCALE_TYPE`, `UNSAFE_LOCALE`, `INVALID_CANONICAL_TYPE`, and
+  `UNSAFE_CANONICAL` blockers for declared values that cannot be used.
+- exported `normalizeContentLocale`, `isValidContentLocale`, and
+  `normalizeContentCanonical`.
+
+### Fixed
+
+- `--output` could destroy a file the tool was never asked to write to, and the
+  run exited `0` saying nothing. Reproduced three ways before the fix:
+  `capture --content=catalog.json --output=catalog.json` replaced the catalog
+  with the baseline; `--output` through a symlinked directory replaced a file
+  outside the working tree; and a symbolic link at the destination was silently
+  replaced instead of being written through. Every destination is now checked
+  before the first byte is written -- symbolic link on sight, parent resolved
+  and compared against `--output-root`, and identity against every input by
+  device and inode -- and a refused destination exits `2` with empty stdout.
+
+- an unparseable catalog or baseline is no longer echoed on stderr. V8's parse
+  error quotes the document (`Unexpected token 'A', "AKIA..." is not valid
+  JSON`), so a file short enough to be only a credential was reproduced in full
+  by its own diagnostic. `describeJsonParseFailure` keeps the position, line and
+  column and drops the quoted content.
+- that first fix was incomplete: it matched the offset BEFORE recognising the
+  quoting shape, so a catalog whose own text reads `at position 1` produced
+  `Unexpected token 'a', "at position 1" is not valid JSON` and was sliced at
+  the offset found INSIDE the quoted span, handing the document straight back.
+  The quoting shape is now recognised first, and any detail still carrying a
+  double quote is replaced by the generic sentence.
+
+### Changed
+
+- `describeJsonParseFailure` now reports `at the start of the document` or
+  `inside the document` rather than `in the document`, distinguishing a leading
+  snippet from a window V8 took further in.
+- a baseline written before the `canonical` dimension existed loads unchanged;
+  its missing entries read as no accepted debt rather than as a malformed
+  baseline. The baseline schema is unchanged.
+
 ## [Unreleased]
 
 ### Added

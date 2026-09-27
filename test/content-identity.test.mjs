@@ -8,6 +8,7 @@ import {
   analyzeContentIdentity,
   assertContentIdentity,
   createContentIdentityBaseline,
+  describeJsonParseFailure,
   formatContentIdentityReport,
   normalizeContentRoute,
   normalizeContentSlug,
@@ -327,4 +328,30 @@ test('formatting truncates long finding lists and JSON keys remain stable', () =
   const result = analyzeContentIdentity(catalog(item('BASE'), ...invalidItems), baseline, { today: '2026-08-10' })
   assert.match(formatContentIdentityReport(result), /more blocker\(s\)/)
   assert.equal(serializeContentIdentityReport({ z: 1, a: { y: 2, b: 3 } }), '{\n  "a": {\n    "b": 3,\n    "y": 2\n  },\n  "z": 1\n}')
+})
+
+test('describeJsonParseFailure keeps the position and drops the quoted document', () => {
+  const capture = (source) => {
+    try {
+      JSON.parse(source)
+      return null
+    } catch (error) {
+      return error
+    }
+  }
+
+  const secret = 'AKIAIOSFODNN7EXAMPLE'
+  const quoting = capture(secret)
+  assert.ok(quoting.message.includes(secret), 'V8 no longer quotes the input; this guard needs revisiting')
+  assert.equal(describeJsonParseFailure(quoting), "unexpected token 'A' at the start of the document")
+
+  const truncatedSnippet = capture('password=hunter2-correct-horse')
+  assert.equal(describeJsonParseFailure(truncatedSnippet), "unexpected token 'p' at the start of the document")
+
+  const positional = describeJsonParseFailure(capture('{"token": "AKIAIOSFODNN7EXAMPLE", '))
+  assert.ok(!positional.includes('AKIAIOSF'), 'the quoted document survived a positional failure')
+  assert.equal(positional, 'Expected double-quoted property name in JSON at position 34 (line 1 column 35)')
+  assert.equal(describeJsonParseFailure(capture('')), 'Unexpected end of JSON input')
+  assert.equal(describeJsonParseFailure(new Error('something else entirely')), 'the document could not be parsed as JSON')
+  assert.equal(describeJsonParseFailure(undefined), 'the document could not be parsed as JSON')
 })

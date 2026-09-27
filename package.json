@@ -37,7 +37,7 @@
   "scripts": {
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/index.mjs --test-coverage-lines=90 --test-coverage-functions=90 --test-coverage-branches=85",
-    "lint": "node --check src/index.mjs && node --check bin/content-identity-auditor.mjs && node --check test/content-identity.test.mjs && node --check test/cli.test.mjs",
+    "lint": "node --check src/index.mjs && node --check src/write-guard.mjs && node --check bin/content-identity-auditor.mjs && node --check test/content-identity.test.mjs && node --check test/cli.test.mjs && node --check test/locale-and-canonical.test.mjs && node --check test/parse-failure.test.mjs && node --check test/write-guard.test.mjs",
     "pack:check": "npm pack --dry-run",
     "check": "npm run lint && npm run test:coverage && npm run pack:check"
   },

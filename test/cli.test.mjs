@@ -23,7 +23,9 @@ test('CLI captures, audits, and advances a synthetic baseline', () => {
   const baselinePath = path.join(directory, 'baseline.json')
   const advancedPath = path.join(directory, 'advanced.json')
   try {
-    const capture = run(['capture', `--content=${fixture}`, `--output=${baselinePath}`, '--captured-at=2026-08-20', '--route-prefix=/guides'])
+    // --output-root declares the tree the baseline may be written into; the
+    // default is the working directory, and this one is a temporary directory.
+    const capture = run(['capture', `--content=${fixture}`, `--output=${baselinePath}`, `--output-root=${directory}`, '--captured-at=2026-08-20', '--route-prefix=/guides'])
     assert.equal(capture.status, 0, capture.stderr)
     assert.equal(fs.statSync(baselinePath).mode & 0o777, 0o600)
     const audit = run(['audit', `--content=${fixture}`, `--baseline=${baselinePath}`, '--today=2026-08-20', '--human-only'])
@@ -31,7 +33,7 @@ test('CLI captures, audits, and advances a synthetic baseline', () => {
     assert.match(audit.stdout, /Content identity gate: PASS/)
     const json = run(['audit', `--content=${fixture}`, `--baseline=${baselinePath}`, '--today=2026-08-20', '--json'])
     assert.equal(JSON.parse(json.stdout).blockers.length, 0)
-    const advance = run(['advance', `--content=${fixture}`, `--baseline=${baselinePath}`, `--output=${advancedPath}`, '--ratchet-at=2026-08-21'])
+    const advance = run(['advance', `--content=${fixture}`, `--baseline=${baselinePath}`, `--output=${advancedPath}`, `--output-root=${directory}`, '--ratchet-at=2026-08-21'])
     assert.equal(advance.status, 0, advance.stderr)
     assert.equal(JSON.parse(fs.readFileSync(advancedPath, 'utf8')).ratchetUpdatedAt, '2026-08-21')
   } finally {
@@ -44,7 +46,7 @@ test('CLI reports blocked audits with exit code one', () => {
   const baselinePath = path.join(directory, 'baseline.json')
   const baselineCatalog = path.join(root, 'test/fixtures/legacy-catalog.json')
   try {
-    assert.equal(run(['capture', `--content=${fixture}`, `--output=${baselinePath}`, '--captured-at=2026-08-20']).status, 0)
+    assert.equal(run(['capture', `--content=${fixture}`, `--output=${baselinePath}`, `--output-root=${directory}`, '--captured-at=2026-08-20']).status, 0)
     const result = run(['audit', `--content=${baselineCatalog}`, `--baseline=${baselinePath}`, '--today=2026-08-20'])
     assert.equal(result.status, 1)
     assert.match(result.stdout, /Content identity gate: BLOCKED/)
@@ -88,6 +90,54 @@ test('CLI rejects non-file and oversized inputs before parsing', () => {
     const oversized = run(['capture', `--content=${oversizedPath}`])
     assert.equal(oversized.status, 2)
     assert.match(oversized.stderr, /10 MiB input limit/)
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+const CANARY = 'AKIAIOSFODNN7EXAMPLE'
+
+/**
+ * A leak is still a leak when only the first few characters are quoted -- V8
+ * truncates the snippet at ten -- so every prefix down to eight characters is
+ * checked, not just the whole canary.
+ */
+function assertNoCanary(result) {
+  for (const [name, stream] of [['stdout', result.stdout], ['stderr', result.stderr]]) {
+    for (let length = CANARY.length; length >= 8; length -= 1) {
+      assert.ok(
+        !stream.includes(CANARY.slice(0, length)),
+        `${name} echoed the first ${length} characters of the unparseable input`,
+      )
+    }
+  }
+}
+
+test('CLI diagnoses an unparseable catalog without echoing its contents', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'content-identity-'))
+  const contentPath = path.join(directory, 'catalog.json')
+  try {
+    fs.writeFileSync(contentPath, CANARY)
+    const result = run(['capture', `--content=${contentPath}`])
+
+    assert.equal(result.status, 2)
+    assertNoCanary(result)
+    assert.match(result.stderr, /Content catalog is not valid JSON/)
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('CLI diagnoses an unparseable baseline by position, keeping line and column', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'content-identity-'))
+  const baselinePath = path.join(directory, 'baseline.json')
+  try {
+    fs.writeFileSync(baselinePath, `{"token": "${CANARY}", `)
+    const result = run(['audit', `--content=${fixture}`, `--baseline=${baselinePath}`])
+
+    assert.equal(result.status, 2)
+    assertNoCanary(result)
+    assert.match(result.stderr, /Baseline is not valid JSON: .*at position \d+ \(line \d+ column \d+\)$/m)
   } finally {
     fs.rmSync(directory, { recursive: true, force: true })
   }
