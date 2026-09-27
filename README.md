@@ -92,6 +92,11 @@ collision, while two English articles that share it still are. An item with no
 `locale` sits in the default scope, so a catalog that declares no locales
 behaves exactly as it did before.
 
+Existing baselines that recorded title or keyword collision debt before locale
+scoping remain usable. The same recorded ID pairs remain accepted within a
+locale; a new member or a retired pair coming back is still blocked. Newly
+captured baselines record locale-scoped values directly.
+
 ### Canonical identity
 
 When items declare `canonical`, two items claiming the same canonical address

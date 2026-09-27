@@ -219,6 +219,12 @@ function splitScopedValue(value) {
     : { locale: value.slice(0, index), bare: value.slice(index + 1) }
 }
 
+function legacyUnscopedValue(value, dimension) {
+  if (!LOCALE_SCOPED_DIMENSIONS.includes(dimension)) return null
+  const { locale, bare } = splitScopedValue(value)
+  return locale ? bare : null
+}
+
 export function normalizeContentRoute(item, options = {}) {
   const routePrefix = normalizeRoutePrefix(options.routePrefix)
   return `${routePrefix}/${normalizeContentSlug(item?.id)}/${normalizeContentSlug(item?.slug)}/`
@@ -607,9 +613,12 @@ function pushCollisionBlockers(blockers, groups, baseline, dimension) {
   const allowed = baselineGroups(baseline, dimension)
   const retired = new Set(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map(pairKey))
   for (const group of groups) {
-    const allowedIds = allowed.get(group.value)
+    const bare = legacyUnscopedValue(group.value, dimension)
+    const allowedIds = allowed.get(group.value) ?? (bare === null ? undefined : allowed.get(bare))
     const unexpectedIds = sortedUnique(group.ids.filter((id) => !allowedIds?.has(id)))
-    const reintroducedPairs = pairsForGroup(group).filter((pair) => retired.has(pairKey(pair))).map((pair) => pair.ids)
+    const reintroducedPairs = pairsForGroup(group)
+      .filter((pair) => retired.has(pairKey(pair)) || (bare !== null && retired.has(pairKey({ ...pair, value: bare }))))
+      .map((pair) => pair.ids)
     if (!allowedIds || unexpectedIds.length || reintroducedPairs.length) {
       blockers.push({
         code: COLLISION_CODES[dimension],
@@ -648,14 +657,18 @@ function pushPublicationBlockers(blockers, bursts, baseline) {
 }
 
 function collisionDebt(groups, baseline, dimension) {
-  const current = new Map(groups.map((group) => [group.value, new Set(group.ids)]))
   let groupsResolved = 0
   let items = 0
   let pairs = 0
   for (const legacy of baselineDimension(baseline, 'legacyCollisionGroups', dimension)) {
-    const retained = new Set([...current.get(legacy.value) ?? []].filter((id) => legacy.ids.includes(id)))
+    const matching = groups.filter((group) => group.value === legacy.value
+      || legacyUnscopedValue(group.value, dimension) === legacy.value)
+    const retained = new Set(matching.flatMap((group) => group.ids.filter((id) => legacy.ids.includes(id))))
     const legacyPairs = pairsForGroup(legacy).length
-    const retainedPairs = retained.size > 1 ? (retained.size * (retained.size - 1)) / 2 : 0
+    const retainedPairs = matching.reduce((total, group) => {
+      const count = group.ids.filter((id) => legacy.ids.includes(id)).length
+      return total + (count * (count - 1)) / 2
+    }, 0)
     const pairReduction = legacyPairs - retainedPairs
     if (pairReduction > 0) groupsResolved += 1
     items += legacy.ids.length - retained.size
@@ -787,7 +800,12 @@ export function advanceContentIdentityBaseline(catalog, baseline, options = {}) 
   const published = catalog.items.filter((item) => isRecord(item) && item.status === 'published')
   const collisions = collisionGroups(published, baseline.config)
   const retiredCollisionPairs = Object.fromEntries(DIMENSIONS.map((dimension) => {
-    const current = new Set(collisions[dimension].flatMap(pairsForGroup).map(pairKey))
+    const current = new Set()
+    for (const pair of collisions[dimension].flatMap(pairsForGroup)) {
+      current.add(pairKey(pair))
+      const bare = legacyUnscopedValue(pair.value, dimension)
+      if (bare !== null) current.add(pairKey({ ...pair, value: bare }))
+    }
     const retired = new Map(baselineDimension(baseline, 'retiredCollisionPairs', dimension).map((pair) => [pairKey(pair), pair]))
     for (const pair of baselineDimension(baseline, 'legacyCollisionGroups', dimension).flatMap(pairsForGroup)) {
       if (!current.has(pairKey(pair))) retired.set(pairKey(pair), pair)

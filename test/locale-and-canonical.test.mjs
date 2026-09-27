@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  advanceContentIdentityBaseline,
   analyzeContentIdentity,
   createContentIdentityBaseline,
   isValidContentLocale,
@@ -110,6 +111,61 @@ test('a locale-scoped collision records the locale in its value', () => {
 
   assert.ok(collision.value.startsWith('en\u0000'))
   assert.deepEqual(collision.ids, ['alpha', 'beta'])
+})
+
+test('an unchanged catalog retains collision debt captured before locale scoping', () => {
+  const items = [
+    item({ id: 'alpha', slug: 'pricing-a', title: 'Pricing', locale: 'en' }),
+    item({ id: 'beta', slug: 'pricing-b', title: 'Pricing', locale: 'en' }),
+  ]
+  const baseline = createContentIdentityBaseline({ items }, { capturedAt: TODAY })
+  for (const dimension of ['title', 'primaryKeyword']) {
+    baseline.legacyCollisionGroups[dimension][0].value = 'pricing'
+  }
+
+  const result = analyzeContentIdentity({ items }, baseline, { today: TODAY })
+  assert.deepEqual(result.blockers, [])
+  assert.deepEqual(result.resolvedLegacyDebt.title, { groups: 0, items: 0, pairs: 0 })
+  assert.deepEqual(result.resolvedLegacyDebt.primaryKeyword, { groups: 0, items: 0, pairs: 0 })
+
+  const advanced = advanceContentIdentityBaseline({ items }, baseline, { ratchetUpdatedAt: TODAY })
+  assert.deepEqual(advanced.retiredCollisionPairs.title, [])
+  assert.deepEqual(advanced.retiredCollisionPairs.primaryKeyword, [])
+})
+
+test('a retired pair from an unscoped baseline blocks reintroduction in one locale', () => {
+  const alpha = item({ id: 'alpha', slug: 'pricing-a', title: 'Pricing', locale: 'en' })
+  const beta = item({ id: 'beta', slug: 'pricing-b', title: 'Pricing', locale: 'en' })
+  const baseline = createContentIdentityBaseline({ items: [alpha, beta] }, { capturedAt: TODAY })
+  for (const dimension of ['title', 'primaryKeyword']) {
+    baseline.legacyCollisionGroups[dimension][0].value = 'pricing'
+  }
+
+  const advanced = advanceContentIdentityBaseline({ items: [alpha] }, baseline, { ratchetUpdatedAt: TODAY })
+  assert.deepEqual(advanced.retiredCollisionPairs.title, [{ value: 'pricing', ids: ['alpha', 'beta'] }])
+  const result = analyzeContentIdentity({ items: [alpha, beta] }, advanced, { today: TODAY })
+  for (const code of ['NEW_PUNCTUATION_INSENSITIVE_TITLE_COLLISION', 'WORSENED_PRIMARY_KEYWORD_CLUSTER']) {
+    const finding = result.blockers.find((entry) => entry.code === code)
+    assert.ok(finding, `expected ${code}`)
+    assert.deepEqual(finding.reintroducedPairs, [['alpha', 'beta']])
+    assert.deepEqual(finding.unexpectedIds, [])
+  }
+})
+
+test('an unscoped baseline still rejects a new member of an old locale collision', () => {
+  const alpha = item({ id: 'alpha', slug: 'pricing-a', title: 'Pricing', locale: 'en' })
+  const beta = item({ id: 'beta', slug: 'pricing-b', title: 'Pricing', locale: 'en' })
+  const baseline = createContentIdentityBaseline({ items: [alpha, beta] }, { capturedAt: TODAY })
+  for (const dimension of ['title', 'primaryKeyword']) baseline.legacyCollisionGroups[dimension][0].value = 'pricing'
+  const gamma = item({ id: 'gamma', slug: 'pricing-c', title: 'Pricing', locale: 'en' })
+
+  const result = analyzeContentIdentity({ items: [alpha, beta, gamma] }, baseline, { today: TODAY })
+  for (const code of ['NEW_PUNCTUATION_INSENSITIVE_TITLE_COLLISION', 'WORSENED_PRIMARY_KEYWORD_CLUSTER']) {
+    const finding = result.blockers.find((entry) => entry.code === code)
+    assert.ok(finding, `expected ${code}`)
+    assert.deepEqual(finding.unexpectedIds, ['gamma'])
+    assert.deepEqual(finding.reintroducedPairs, [])
+  }
 })
 
 test('two items claiming one canonical collide across locales', () => {
