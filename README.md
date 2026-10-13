@@ -16,7 +16,7 @@ The [Edilec worked example](https://edilec.com/open-source/content-identity-audi
 runs checked-in public fixtures and explains the report and its limits. This
 repository remains the source of truth for the CLI and test data.
 
-> **Maturity:** experimental `0.1.0`. The API and baseline schema may change
+> **Maturity:** experimental `0.2.0`. The API and baseline schema may change
 > before `1.0.0`. The package is not currently published to npm.
 
 ## Why it exists

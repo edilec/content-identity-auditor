@@ -3,7 +3,7 @@
 All notable changes to this project will be documented here. The project uses
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [0.2.0] - 2026-10-14
 
 ### Added
 
@@ -55,7 +55,7 @@ All notable changes to this project will be documented here. The project uses
   its missing entries read as no accepted debt rather than as a malformed
   baseline. The baseline schema is unchanged.
 
-## [Unreleased]
+Additional changes included in v0.2.0:
 
 ### Added
 
@@ -74,5 +74,6 @@ All notable changes to this project will be documented here. The project uses
 - Initial public release extracted and generalized from owned Edilec website
   tooling. The package is not currently published to npm.
 
-[Unreleased]: https://github.com/edilec/content-identity-auditor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/edilec/content-identity-auditor/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/edilec/content-identity-auditor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/edilec/content-identity-auditor/releases/tag/v0.1.0
