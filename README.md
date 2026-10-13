@@ -12,6 +12,10 @@ It normalizes routes, slugs, titles, and primary keywords; records existing
 debt in a deterministic baseline; blocks new debt; and lets teams ratchet away
 legacy problems without allowing them to return.
 
+The [Edilec worked example](https://edilec.com/open-source/content-identity-auditor/)
+runs checked-in public fixtures and explains the report and its limits. This
+repository remains the source of truth for the CLI and test data.
+
 > **Maturity:** experimental `0.1.0`. The API and baseline schema may change
 > before `1.0.0`. The package is not currently published to npm.
 
