@@ -195,7 +195,7 @@ async function runAdvance(options) {
 if (command === '--help' || command === '-h' || command === undefined) {
   process.stdout.write(`${usage}\n`)
 } else if (command === '--version' || command === '-v') {
-  process.stdout.write('0.1.0\n')
+  process.stdout.write('0.2.0\n')
 } else {
   try {
     const options = parseArgs(rawArgs)

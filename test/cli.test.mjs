@@ -15,7 +15,7 @@ function run(args, options = {}) {
 
 test('CLI prints help and version', () => {
   assert.match(execFileSync(process.execPath, [cli, '--help'], { encoding: 'utf8' }), /Usage:/)
-  assert.equal(execFileSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }), '0.1.0\n')
+  assert.equal(execFileSync(process.execPath, [cli, '--version'], { encoding: 'utf8' }), '0.2.0\n')
 })
 
 test('CLI captures, audits, and advances a synthetic baseline', () => {
